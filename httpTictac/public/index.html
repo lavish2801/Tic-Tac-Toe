@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic-Tac-Toe (HTTP Polling)</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f0f0f0;
+    }
+
+    #game {
+      text-align: center;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      gap: 5px;
+      margin: 20px auto;
+    }
+
+    .cell {
+      width: 100px;
+      height: 100px;
+      background-color: #fff;
+      font-size: 2rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 1px solid #333;
+      cursor: pointer;
+    }
+
+    #status {
+      margin-top: 10px;
+    }
+
+    #current-player {
+      font-weight: bold;
+      color: #007BFF;
+    }
+
+    #player-info {
+      margin-top: 10px;
+    }
+
+    #reset-button,
+    #join-button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    #reset-button:hover,
+    #join-button:hover {
+      background-color: #0056b3;
+    }
+
+    #reset-button {
+      display: none;
+      /* Initially hidden */
+    }
+  </style>
+</head>
+
+<body>
+  <div id="game">
+    <h1>Tic-Tac-Toe</h1>
+    <div id="player-info">
+      <div>Player X: <span id="player-x">Waiting...</span></div>
+      <div>Player O: <span id="player-o">Waiting...</span></div>
+    </div>
+    <div id="board"></div>
+    <div id="status">Current Player: <span id="current-player">X</span></div>
+    <button id="reset-button">Reset Game</button>
+    <button id="join-button">Join Game</button>
+  </div>
+
+  <script>
+    const boardElement = document.getElementById('board');
+    const statusElement = document.getElementById('status');
+    const currentPlayerElement = document.getElementById('current-player');
+    const playerXElement = document.getElementById('player-x');
+    const playerOElement = document.getElementById('player-o');
+    const resetButton = document.getElementById('reset-button');
+    const joinButton = document.getElementById('join-button');
+
+    let board = Array(9).fill(null);
+    let currentPlayer = 'X';
+    let gameOver = false;
+    let player = null; // The player ('X' or 'O') assigned
+
+    function createBoard() {
+      boardElement.innerHTML = '';
+      board.forEach((cell, index) => {
+        const cellElement = document.createElement('div');
+        cellElement.classList.add('cell');
+        cellElement.textContent = cell;
+        if (!gameOver && cell === null && currentPlayer === player) {
+          cellElement.addEventListener('click', () => makeMove(index));
+        }
+        boardElement.appendChild(cellElement);
+      });
+    }
+
+    async function joinGame() {
+      const response = await fetch('/join', { method: 'POST' });
+      const data = await response.json();
+      if (data.error) {
+        alert(data.error);
+      } else {
+        player = data.player;
+        alert(`You joined as ${data.playerName}`);
+        updatePlayerInfo(data.playerName, data.player);
+        fetchState(); // Start fetching the game state
+      }
+    }
+
+    async function makeMove(index) {
+      const response = await fetch('/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index, player })
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        alert(data.error);
+      } else {
+        updateBoard(data.board, data.currentPlayer, data.message, data.playerX, data.playerO);
+      }
+    }
+
+    function updateBoard(newBoard, nextPlayer, message, playerX, playerO) {
+      board = newBoard;
+      currentPlayer = nextPlayer;
+      gameOver = !!message;
+
+      createBoard();
+      currentPlayerElement.textContent = currentPlayer;
+
+      if (message) {
+        statusElement.textContent = message;
+        if (gameOver) {
+          resetButton.style.display = 'block'; // Show reset button after game over
+        }
+      } else {
+        resetButton.style.display = 'none'; // Hide reset button during the game
+      }
+
+      // Update player names
+      updatePlayerInfo(playerX, playerO);
+    }
+
+    function updatePlayerInfo(playerX, playerO) {
+      playerXElement.textContent = playerX ? `${playerX} ${player === 'X' ? '→ Me' : ''}` : 'Waiting...';
+      playerOElement.textContent = playerO ? `${playerO} ${player === 'O' ? '→ Me' : ''}` : 'Waiting...';
+    }
+
+    async function fetchState() {
+      const response = await fetch('/state');
+      const data = await response.json();
+      updateBoard(data.board, data.currentPlayer, data.gameOver ? 'Game Over' : '', data.playerX, data.playerO);
+    }
+
+    joinButton.addEventListener('click', joinGame);
+
+    resetButton.addEventListener('click', async () => {
+      const response = await fetch('/reset', { method: 'POST' });
+      const data = await response.json();
+      updateBoard(data.board, data.currentPlayer, '');
+      resetButton.style.display = 'none'; // Hide reset button after reset
+    });
+
+    // Poll the server every 2 seconds for the latest game state
+    setInterval(fetchState, 2000);
+
+    // Initial board setup
+    createBoard();
+  </script>
+</body>
+
+</html>
