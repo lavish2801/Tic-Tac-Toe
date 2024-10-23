@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const app = express();
-const PORT = 3000;
+const PORT = 8080;
 
 let board = Array(9).fill(null);
 let currentPlayer = 'X';
@@ -29,6 +29,12 @@ function checkWinner(board) {
 // Serve static HTML and assets
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*'); // Allow all origins
+  res.header('Access-Control-Allow-Methods', 'GET, POST'); // Allow specific methods
+  res.header('Access-Control-Allow-Headers', 'Content-Type'); // Allow specific headers
+  next();
+});
 
 // Handle player joining the game
 app.post('/join', (req, res) => {
