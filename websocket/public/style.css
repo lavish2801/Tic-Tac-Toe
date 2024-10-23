@@ -1,0 +1,50 @@
+/* style.css */
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  h1 {
+    margin-top: 20px;
+  }
+  
+  #status {
+    margin: 10px 0;
+    font-size: 1.2em;
+  }
+  
+  #board {
+    display: grid;
+    grid-template-columns: repeat(3, 100px);
+    grid-gap: 5px;
+  }
+  
+  .cell {
+    width: 100px;
+    height: 100px;
+    font-size: 2em;
+    text-align: center;
+    line-height: 100px;
+    border: 2px solid #333;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .cell:hover {
+    background-color: #ddd;
+  }
+  
+  .cell.disabled {
+    pointer-events: none;
+    color: gray;
+  }
+  
+  img {
+    max-width: 100px; /* Adjust size as needed */
+  }
+  
