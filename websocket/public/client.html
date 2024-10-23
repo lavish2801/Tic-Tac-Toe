@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic-Tac-Toe</title>
+  <link rel="stylesheet" href="style.css"> <!-- Link to your CSS file -->
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f9f9f9;
+    }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-gap: 5px;
+      margin: 20px auto;
+    }
+    .cell {
+      width: 100px;
+      height: 100px;
+      font-size: 2em;
+      text-align: center;
+      line-height: 100px;
+      border: 1px solid #000;
+      cursor: pointer;
+      background-color: #fff;
+      transition: background-color 0.3s;
+    }
+    .cell.disabled {
+      pointer-events: none;
+      color: gray;
+      background-color: #e0e0e0;
+    }
+    h1 {
+      color: #333;
+    }
+    #status {
+      margin: 20px;
+      font-size: 1.5em;
+      color: #333;
+    }
+    .winner-message {
+      font-size: 2em;
+      color: green;
+      margin-top: 20px;
+      display: none; /* Initially hidden */
+    }
+  </style>
+</head>
+<body>
+  <img src="logo.png" alt="Game Logo"> <!-- Add your logo or image -->
+  <h1>Tic-Tac-Toe</h1>
+  <div id="status">Waiting for players...</div>
+  <div id="board"></div>
+  <div id="winner-message" class="winner-message"></div> <!-- Container for the winner message -->
+
+  <script>
+    const boardElement = document.getElementById('board');
+    const statusElement = document.getElementById('status');
+    const winnerMessageElement = document.getElementById('winner-message'); // Element for winner message
+    const socket = new WebSocket(`ws://${location.host}`);
+
+    let board = Array(9).fill(' ');
+    let playerSymbol; // Symbol assigned to this client ('X' or 'O')
+    let currentPlayer; // Current player ('X' or 'O')
+
+    function updateBoard(winningIndex) {
+      boardElement.innerHTML = '';
+      board.forEach((cell, index) => {
+        const cellElement = document.createElement('div');
+        cellElement.classList.add('cell');
+        cellElement.textContent = cell;
+
+        // Highlight the winning cells if available
+        if (winningIndex && winningIndex.includes(index)) {
+          cellElement.style.backgroundColor = 'lightgreen'; // Change color for winning cells
+        }
+
+        // Disable cell if it's taken or it's not this player's turn
+        if (cell !== ' ' || currentPlayer !== playerSymbol) {
+          cellElement.classList.add('disabled');
+        } else {
+          cellElement.onclick = () => makeMove(index);
+        }
+
+        boardElement.appendChild(cellElement);
+      });
+
+      updateStatus();
+    }
+
+    function updateStatus() {
+      if (currentPlayer) {
+        if (currentPlayer === playerSymbol) {
+          statusElement.textContent = `Your turn (${playerSymbol})!`;
+        } else {
+          statusElement.textContent = `Waiting for Player ${currentPlayer}...`;
+        }
+      }
+    }
+
+    function makeMove(index) {
+      socket.send(JSON.stringify({ index }));
+    }
+
+    socket.onmessage = event => {
+      const message = JSON.parse(event.data);
+
+      if (message.type === 'init') {
+        board = message.board;
+        currentPlayer = message.currentPlayer;
+        playerSymbol = message.playerSymbol;
+        updateBoard();
+      } else if (message.type === 'update') {
+        board = message.board;
+        currentPlayer = message.currentPlayer;
+        updateBoard();
+      } else if (message.type === 'end') {
+        statusElement.textContent = ''; // Clear the status message
+        winnerMessageElement.textContent = message.message; // Set the winning message
+        winnerMessageElement.style.display = 'block'; // Show the winner message
+        boardElement.querySelectorAll('.cell').forEach(cell => cell.classList.add('disabled'));
+        // Highlight winning move if available
+        updateBoard(message.winningIndex);
+      }
+    };
+  </script>
+</body>
+</html>
